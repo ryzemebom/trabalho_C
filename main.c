@@ -95,6 +95,30 @@ void liberar(No* raiz) {
     }
 }
 
+// Função para salvar a árvore em um arquivo binário
+void salvar_arvore(No* raiz, FILE* arquivo) {
+    if (raiz != NULL) {
+        fwrite(&raiz->valor, sizeof(int), 1, arquivo);
+        salvar_arvore(raiz->esq, arquivo);
+        salvar_arvore(raiz->dir, arquivo);
+    } else {
+        int valor_nulo = -1;  // Indicando fim da árvore (nó nulo)
+        fwrite(&valor_nulo, sizeof(int), 1, arquivo);
+    }
+}
+
+// Função para carregar a árvore de um arquivo binário
+No* carregar_arvore(FILE* arquivo) {
+    int valor;
+    fread(&valor, sizeof(int), 1, arquivo);
+    if (valor == -1) return NULL;
+
+    No* raiz = criar_no(valor);
+    raiz->esq = carregar_arvore(arquivo);
+    raiz->dir = carregar_arvore(arquivo);
+    return raiz;
+}
+
 // Menu interativo
 void menu() {
     printf("\n=== MENU ÁRVORE BINÁRIA ===\n");
@@ -108,7 +132,15 @@ void menu() {
 
 int main() {
     No* raiz = NULL;
+    FILE* arquivo;
     int opcao, valor;
+
+    // Carregar a árvore do arquivo binário
+    arquivo = fopen("arvore.bin", "rb");
+    if (arquivo) {
+        raiz = carregar_arvore(arquivo);
+        fclose(arquivo);
+    }
 
     do {
         menu();
@@ -122,16 +154,15 @@ int main() {
                 printf("Inserido com sucesso.\n");
                 break;
 
-        case 2:
-    if (raiz == NULL) {
-        printf("Árvore vazia. Nenhum elemento para listar.\n");
-    } else {
-        printf("Elementos em ordem: ");
-        em_ordem(raiz);
-        printf("\n");
-    }
-    break;
-
+            case 2:
+                if (raiz == NULL) {
+                    printf("Árvore vazia. Nenhum elemento para listar.\n");
+                } else {
+                    printf("Elementos em ordem: ");
+                    em_ordem(raiz);
+                    printf("\n");
+                }
+                break;
 
             case 3:
                 printf("Digite o número para buscar: ");
@@ -150,7 +181,13 @@ int main() {
                 break;
 
             case 0:
-                printf("Encerrando programa...\n");
+                // Salvar a árvore no arquivo binário antes de sair
+                arquivo = fopen("arvore.bin", "wb");
+                if (arquivo) {
+                    salvar_arvore(raiz, arquivo);
+                    fclose(arquivo);
+                }
+                printf("Árvore salva e programa encerrado.\n");
                 break;
 
             default:
@@ -161,3 +198,4 @@ int main() {
     liberar(raiz);
     return 0;
 }
+
