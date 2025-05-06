@@ -1,87 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
 #define MAX_DOMINIO 100
 #define MAX_REGISTRO 100
+#define MAX_DNS 100
+#define QTD_DNS 2
 
-// Definindo a estrutura do nó
+// Estrutura para armazenar domínio e dados associados
 typedef struct dominio {
-    char nome[MAX_DOMINIO];   // Nome do domínio
-    char registro[MAX_REGISTRO]; // Nome do registro (associado ao domínio)
-    struct dominio* proximo;
+    char nome[MAX_DOMINIO];         // Nome do domínio
+    char registro[MAX_REGISTRO];    // Nome do registro
+    char dns[QTD_DNS][MAX_DNS];     // Lista de até 3 DNS
+    struct dominio* proximo;        // Próximo domínio
 } Dominio;
 
-// Função para verificar se um caractere é válido em um domínio
-int isValidCharForDomain(char c) {
-    return (isalnum(c) || c == '.' || c == '-');
-}
-
-// Função para validar se o nome do domínio tem um formato correto
-int validarDominio(const char* nome) {
-    int len = strlen(nome);
-    
-    if (len < 5) // Domínios muito curtos não são válidos (ex: 'a.b' não é válido)
-        return 0;
-
-    int hasDot = 0;
-    int hasAlphanumeric = 0;
-
-    // Verifica cada caractere
-    for (int i = 0; i < len; i++) {
-        char c = nome[i];
-        
-        if (!isValidCharForDomain(c)) {
-            return 0; // Caracter inválido encontrado
-        }
-
-        if (c == '.') {
-            hasDot = 1; // Encontrou um ponto
-        } else if (isalnum(c)) {
-            hasAlphanumeric = 1; // Encontrou um caractere alfanumérico
-        }
-    }
-
-    // Verifica se o domínio possui ao menos um ponto e ao menos um caractere alfanumérico
-    if (!hasDot || !hasAlphanumeric) {
-        return 0;
-    }
-
-    // Certifica-se de que o domínio não começa nem termina com um ponto
-    if (nome[0] == '.' || nome[len - 1] == '.') {
-        return 0;
-    }
-
-    return 1; // Dominio válido
-}
-
-// Função para criar um novo domínio com um nome de registro
-Dominio* criarDominio(const char* nome, const char* registro) {
+// Cria novo domínio
+Dominio* criarDominio(const char* nome, const char* registro, char dns[][MAX_DNS]) {
     Dominio* novo = (Dominio*)malloc(sizeof(Dominio));
-    if (novo) {
+    if (novo != NULL) {
         strncpy(novo->nome, nome, MAX_DOMINIO);
-        novo->nome[MAX_DOMINIO - 1] = '\0';  // Garantir que a string seja terminada corretamente
         strncpy(novo->registro, registro, MAX_REGISTRO);
-        novo->registro[MAX_REGISTRO - 1] = '\0'; // Garantir que o nome de registro seja terminado corretamente
+
+        for (int i = 0; i < QTD_DNS; i++) {
+            strncpy(novo->dns[i], dns[i], MAX_DNS);
+        }
+
         novo->proximo = NULL;
     }
     return novo;
 }
 
-// Função para adicionar um domínio à lista
-void adicionarDominio(Dominio** lista, const char* nome, const char* registro) {
-    if (!validarDominio(nome)) {
-        printf("Erro: O domínio '%s' não é válido.\n", nome);
+// Adiciona domínio à lista
+void adicionarDominio(Dominio** lista, const char* nome, const char* registro, char dns[][MAX_DNS]) {
+    if (strchr(nome, '.') == NULL) {
+        printf("Erro: O domínio '%s' não é válido (precisa ter um ponto).\n", nome);
         return;
     }
 
-    Dominio* novo = criarDominio(nome, registro);
-    if (!novo) {
-        printf("Erro ao alocar memória!\n");
-        return;
-    }
-    
+    Dominio* novo = criarDominio(nome, registro, dns);
+
     if (*lista == NULL) {
         *lista = novo;
     } else {
@@ -91,25 +49,29 @@ void adicionarDominio(Dominio** lista, const char* nome, const char* registro) {
         }
         temp->proximo = novo;
     }
-    printf("Domínio '%s' com registro '%s' adicionado com sucesso!\n", nome, registro);
+
+    printf("Domínio '%s' registrado com sucesso!\n", nome);
 }
 
-// Função para listar todos os domínios e seus registros
+// Lista todos os domínios
 void listarDominios(Dominio* lista) {
     if (lista == NULL) {
-        printf("Não há domínios registrados.\n");
+        printf("Nenhum domínio registrado.\n");
         return;
     }
-    
-    printf("Lista de domínios registrados:\n");
+
     Dominio* temp = lista;
     while (temp != NULL) {
-        printf("Domínio: %s | Registro: %s\n", temp->nome, temp->registro);
+        printf("\nDomínio: %s\n", temp->nome);
+        printf("Registro: %s\n", temp->registro);
+        for (int i = 0; i < QTD_DNS; i++) {
+            printf("DNS %d: %s\n", i + 1, temp->dns[i]);
+        }
         temp = temp->proximo;
     }
 }
 
-// Função para buscar um domínio na lista
+// Busca um domínio
 Dominio* buscarDominio(Dominio* lista, const char* nome) {
     Dominio* temp = lista;
     while (temp != NULL) {
@@ -121,25 +83,23 @@ Dominio* buscarDominio(Dominio* lista, const char* nome) {
     return NULL;
 }
 
-// Função para remover um domínio da lista
+// Remove domínio
 void removerDominio(Dominio** lista, const char* nome) {
     if (*lista == NULL) {
         printf("A lista está vazia.\n");
         return;
     }
-    
+
     Dominio* temp = *lista;
     Dominio* anterior = NULL;
 
-    // Caso especial: remover o primeiro domínio
     if (strcmp(temp->nome, nome) == 0) {
         *lista = temp->proximo;
         free(temp);
         printf("Domínio '%s' removido com sucesso.\n", nome);
         return;
     }
-    
-    // Procurar o domínio na lista
+
     while (temp != NULL && strcmp(temp->nome, nome) != 0) {
         anterior = temp;
         temp = temp->proximo;
@@ -150,7 +110,6 @@ void removerDominio(Dominio** lista, const char* nome) {
         return;
     }
 
-    // Remover o domínio encontrado
     anterior->proximo = temp->proximo;
     free(temp);
     printf("Domínio '%s' removido com sucesso.\n", nome);
@@ -162,6 +121,7 @@ int main() {
     int opcao;
     char nome[MAX_DOMINIO];
     char registro[MAX_REGISTRO];
+    char dns[QTD_DNS][MAX_DNS];
 
     do {
         printf("\n1. Adicionar Domínio\n");
@@ -171,51 +131,67 @@ int main() {
         printf("5. Sair\n");
         printf("Escolha uma opção: ");
         scanf("%d", &opcao);
-        getchar();  // Para consumir o caractere de nova linha que fica no buffer
+        getchar();  // limpa \n
 
         switch (opcao) {
             case 1:
-                printf("Digite o nome do domínio: ");
+                printf("Nome do domínio: ");
                 fgets(nome, MAX_DOMINIO, stdin);
-                nome[strcspn(nome, "\n")] = '\0'; // Remover a nova linha no final
+                nome[strcspn(nome, "\n")] = '\0';
 
-                printf("Digite o nome do registro (pessoa/empresa): ");
+                printf("Nome do registro: ");
                 fgets(registro, MAX_REGISTRO, stdin);
-                registro[strcspn(registro, "\n")] = '\0'; // Remover a nova linha no final
+                registro[strcspn(registro, "\n")] = '\0';
 
-                adicionarDominio(&lista, nome, registro);
+                for (int i = 0; i < QTD_DNS; i++) {
+                    printf("Digite o DNS %d: ", i + 1);
+                    fgets(dns[i], MAX_DNS, stdin);
+                    dns[i][strcspn(dns[i], "\n")] = '\0';
+                }
+
+                adicionarDominio(&lista, nome, registro, dns);
                 break;
+
             case 2:
                 listarDominios(lista);
                 break;
+
             case 3:
-                printf("Digite o nome do domínio a buscar: ");
+                printf("Digite o domínio a buscar: ");
                 fgets(nome, MAX_DOMINIO, stdin);
-                nome[strcspn(nome, "\n")] = '\0'; // Remover a nova linha no final
+                nome[strcspn(nome, "\n")] = '\0';
+
                 {
                     Dominio* encontrado = buscarDominio(lista, nome);
                     if (encontrado) {
-                        printf("Domínio '%s' encontrado. Registro: %s\n", encontrado->nome, encontrado->registro);
+                        printf("\nDomínio encontrado: %s\n", encontrado->nome);
+                        printf("Registro: %s\n", encontrado->registro);
+                        for (int i = 0; i < QTD_DNS; i++) {
+                            printf("DNS %d: %s\n", i + 1, encontrado->dns[i]);
+                        }
                     } else {
-                        printf("Domínio '%s' não encontrado.\n", nome);
+                        printf("Domínio não encontrado.\n");
                     }
                 }
                 break;
+
             case 4:
-                printf("Digite o nome do domínio a remover: ");
+                printf("Digite o domínio a remover: ");
                 fgets(nome, MAX_DOMINIO, stdin);
-                nome[strcspn(nome, "\n")] = '\0'; // Remover a nova linha no final
+                nome[strcspn(nome, "\n")] = '\0';
                 removerDominio(&lista, nome);
                 break;
+
             case 5:
-                printf("Saindo...\n");
+                printf("Encerrando programa...\n");
                 break;
+
             default:
-                printf("Opção inválida! Tente novamente.\n");
+                printf("Opção inválida.\n");
         }
     } while (opcao != 5);
 
-    // Liberar memória alocada
+    // Libera memória
     while (lista != NULL) {
         Dominio* temp = lista;
         lista = lista->proximo;
